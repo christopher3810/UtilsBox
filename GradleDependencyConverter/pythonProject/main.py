@@ -9,31 +9,34 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 
 def flatten_dependencies(file_path, output_path, excel=False, deduplicate=False):
-    with open(file_path, 'r') as f:
-        lines = f.readlines()
+    try:
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
 
-    regex = re.compile(r'\+--- |\\--- |\|    ')
-    result_lines = []
-    for line in lines:
-        if regex.match(line):
-            line = line.split(':', 1)[-1]  # get everything after first colon
-            line = re.sub(r'\s*\(\*\)|\s*\([0-9]+\)', '', line)  # remove (*) or (n)
-            result_lines.append(line.strip())  # remove leading/trailing whitespace
+        regex = re.compile(r'\+--- |\\--- |\|    ')
+        result_lines = []
+        for line in lines:
+            if regex.match(line):
+                line = line.split(':', 1)[-1]  # get everything after first colon
+                line = re.sub(r'\s*\(\*\)|\s*\([0-9]+\)', '', line)  # remove (*) or (n)
+                result_lines.append(line.strip())  # remove leading/trailing whitespace
 
-    result_lines.sort(key=sort_func)  # sort lines in ascending order
+        result_lines.sort(key=sort_func)  # sort lines in ascending order
 
-    if deduplicate:
-        result_lines = list(set(result_lines))  # remove duplicates
-        result_lines.sort(key=sort_func)  # re-sort after removing duplicates
+        if deduplicate:
+            result_lines = list(set(result_lines))  # remove duplicates
+            result_lines.sort(key=sort_func)  # re-sort after removing duplicates
 
-    if excel:
-        df = pd.DataFrame(result_lines, columns=["dependencies"])
-        df.to_excel(output_path, index=False)
-    else:
-        with open(output_path, 'w') as f:
-            for line in result_lines:
-                f.write(line + '\n')
-
+        if excel:
+            df = pd.DataFrame(result_lines, columns=["dependencies"])
+            df.to_excel(output_path, index=False)
+        else:
+            with open(output_path, 'w') as f:
+                for line in result_lines:
+                    f.write(line + '\n')
+    except Exception as e:
+        print(f"An error occurred while processing the file {file_path}: {str(e)}")
+        sys.exit(1)
 
 def split_num_str(s):
     """Split string into numeric and non-numeric part"""
@@ -41,7 +44,7 @@ def split_num_str(s):
     if match:
         items = match.groups()
     else:
-        items = (s, 0)
+        items = (s, "0")
     return items
 
 def sort_func(s):
