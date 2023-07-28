@@ -1,0 +1,10 @@
+{
+    "PG_PORT": 18001,
+    "NEW_PG_DUMP": "E:\\mstatic_Test_Ground\\static-server\\postgresql\\bin\\pg_dump.exe",
+    "DATABASE_NAME": "static",
+    "PGPASSWORD": "suresoft0",
+    "PGUSER": "postgres",
+    "PGHOST": "localhost",
+    "dump_dir": "extract_dump_schema",
+    "TABLE_PREFIX": "revision"
+}
