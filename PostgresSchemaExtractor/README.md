@@ -44,14 +44,14 @@ info.json 파일은 다음과 같은 구조를 가져야 합니다.
 
 ```json
 {
-    "dbname": "데이터베이스 이름",
-    "user": "사용자 이름",
-    "password": "비밀번호",
-    "host": "호스트명",
-    "port": "postgres port",
-    "pg_dump_path": "pg_dump 경로",
+    "DATABASE_NAME": "데이터베이스 이름",
+    "PGUSER": "사용자 이름",
+    "PGPASSWORD": "비밀번호",
+    "PGHOST": "호스트명",
+    "PG_PORT": "postgres port",
+    "NEW_PG_DUMP": "pg_dump 경로",
     "dump_dir": "덤프 디렉토리 경로",
-    "table_prefix": "테이블 접두사"
+    "TABLE_PREFIX": "테이블 접두사"
 }
 ```
 위의 예시에 실제 PostgreSQL 상세 정보와 경로를 적어야 됩니다.
