@@ -1,9 +1,13 @@
-import psycopg2
 import os
+import psycopg2
 import subprocess
 import json
 import argparse
 import sys
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def dump_single_file(cur, config, DUMP_DIR):
@@ -11,6 +15,7 @@ def dump_single_file(cur, config, DUMP_DIR):
     with open(single_file, 'w') as f:
         for table in cur.fetchall():
             table = table[0]  # Get table name from tuple
+            logging.info(f'Dumping schema for table {table}')
             result = subprocess.run([
                 config['NEW_PG_DUMP'],
                 "-U", config['PGUSER'],
@@ -25,6 +30,7 @@ def dump_single_file(cur, config, DUMP_DIR):
 def dump_multiple_files(cur, config, DUMP_DIR):
     for table in cur.fetchall():
         table = table[0]  # Get table name from tuple
+        logging.info(f'Dumping schema for table {table}')
         subprocess.run([
             config['NEW_PG_DUMP'],
             "-U", config['PGUSER'],
@@ -37,53 +43,69 @@ def dump_multiple_files(cur, config, DUMP_DIR):
 
 
 def main(args):
-    # Load configuration from JSON file
-    with open(args.info, 'r', encoding='utf-8') as f:
-        config = json.load(f)
+    try:
+        logging.info('Starting schema dump process')
+        # Load configuration from JSON file
+        with open(args.info, 'r', encoding='utf-8') as f:
+            config = json.load(f)
 
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+        logging.info('Loaded configuration from JSON file')
 
-    # Ensure dump directory exists
-    DUMP_DIR = config.get('dump_dir', script_dir)
-    if not os.path.isabs(DUMP_DIR):
-        DUMP_DIR = os.path.join(script_dir, DUMP_DIR)
-    os.makedirs(DUMP_DIR, exist_ok=True)
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Set up connection to PostgreSQL
-    conn = psycopg2.connect(
-        dbname=config['DATABASE_NAME'],
-        user=config['PGUSER'],
-        password=config['PGPASSWORD'],
-        host=config['PGHOST'],
-        port=config['PG_PORT']
-    )
+        # Ensure dump directory exists
+        DUMP_DIR = config.get('dump_dir', script_dir)
+        if not os.path.isabs(DUMP_DIR):
+            DUMP_DIR = os.path.join(os.getcwd(), DUMP_DIR)
+        os.makedirs(DUMP_DIR, exist_ok=True)
 
-    # Create cursor to execute SQL
-    cur = conn.cursor()
+        logging.info(f'Using dump directory: {DUMP_DIR}')
 
-    # Define SQL file path
-    if getattr(sys, 'frozen', False):
-        application_path = sys._MEIPASS
-    else:
-        application_path = os.path.dirname(os.path.abspath(__file__))
+        # Set up connection to PostgreSQL
+        conn = psycopg2.connect(
+            dbname=config['DATABASE_NAME'],
+            user=config['PGUSER'],
+            password=config['PGPASSWORD'],
+            host=config['PGHOST'],
+            port=config['PG_PORT']
+        )
 
-    query_file_path = os.path.join(application_path, 'extract.sql')
+        logging.info('Connected to PostgreSQL database')
 
-    # Get table prefix from config
-    table_prefix = config.get('TABLE_PREFIX', '')
+        # Create cursor to execute SQL
+        cur = conn.cursor()
 
-    # Load SQL file
-    with open(query_file_path, 'r', encoding='utf-8') as file:
-        sql_query = file.read().format(table_prefix=table_prefix)
+        # Define SQL file path
+        if getattr(sys, 'frozen', False):
+            application_path = sys._MEIPASS
+        else:
+            application_path = os.path.dirname(os.path.abspath(__file__))
 
-    # Execute SQL to get table names with prefix
-    cur.execute(sql_query)
+        query_file_path = os.path.join(application_path, 'extract.sql')
 
-    if args.mode == 'single':
-        dump_single_file(cur, config, DUMP_DIR)
-    elif args.mode == 'multi':
-        dump_multiple_files(cur, config, DUMP_DIR)
+        # Get table prefix from config
+        table_prefix = config.get('TABLE_PREFIX', '')
+
+        # Load SQL file
+        with open(query_file_path, 'r', encoding='utf-8') as file:
+            sql_query = file.read().format(table_prefix=table_prefix)
+
+        # Execute SQL to get table names with prefix
+        cur.execute(sql_query)
+
+        if args.mode == 'single':
+            logging.info('Mode: single file')
+            dump_single_file(cur, config, DUMP_DIR)
+        elif args.mode == 'multi':
+            logging.info('Mode: multiple files')
+            dump_multiple_files(cur, config, DUMP_DIR)
+
+        logging.info('Schema dump process completed')
+
+    except Exception as e:
+        logging.error(f'An error occurred: {e}')
+        sys.exit(1)
 
 
 if __name__ == '__main__':
